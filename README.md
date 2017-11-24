@@ -1,4 +1,9 @@
 # database name: zhangmen_507project6
+### Command line: 
+    * To set up database, use ** python SI507_project6.py setup ** 
+	* To insert data into database, use ** python SI507_project6.py insert ** 
+	* To query database, use ** python SI507_project6.py** 
+	
 # SI 507 F17 - Project 6 - Databases & Planning
 
 ### DEADLINE: Monday, November 27th at 11:59 PM

@@ -41,6 +41,9 @@ def set_up_database():
     """ This function helps set up the table with column names. """
 ####### Note: Use double quotes to make sure the name does not convert to lower case by postgres.
 
+    db_cursor.execute('DROP TABLE IF EXISTS "Sites"')
+    db_cursor.execute('DROP TABLE IF EXISTS "States"')
+    
     # Table: States. All state names are stored in lower case, alphabetically.
     # Column: 
         # - ID (SERIAL)
@@ -65,7 +68,7 @@ def set_up_database():
 # Write code / functions to deal with CSV files and insert data into the database here.
 def insert(connection, cursor, table, data_dict, no_return = True):
     """ Accepts connection and cursor, table name, data dictionary that represents one row, and inserts data into the table."""
-    connection.autocommit = True
+    #connection.autocommit = True
     column_names = data_dict.keys()
 
     if not no_return:
@@ -83,23 +86,23 @@ def insert(connection, cursor, table, data_dict, no_return = True):
         )
 
     sql_string = query.as_string(connection)
-    print(sql_string)
+    #print(sql_string)
     cursor.execute(sql_string, data_dict)
 
     if not no_return:
-        print (cursor.fetchone())
+        print (cursor.fetchone()["ID"])
     
 
 
 
 # ---------------------------------------------------------------------
-# Helper functions to prepare data to be inserted into database
+# Helper functions to prepare data to be inserted into database and to query
 # ---------------------------------------------------------------------
 
 # pass a state_fullname and return the corresponding ID in table States
 def get_state_id(state_fullname):
    state_fullname.lower()
-   #query = 'SELECT "ID" FROM "States" WHERE "Name" = {}'.format(state_fullname)
+   #query = """SELECT "ID" FROM "States" WHERE "Name" = '{}' """.format(state_fullname)
    query = 'SELECT "ID" FROM "States" WHERE "Name" = %s'
    db_cursor.execute(query, (state_fullname,))
    result = db_cursor.fetchone()
@@ -117,7 +120,15 @@ def get_site_diction(site_list, state_id):
     diction["State_ID"] = state_id
     return diction
 
-
+# query data and print
+def search(query, number_of_results = 1):
+    db_cursor.execute(query)
+    results = db_cursor.fetchall()
+    print('--> Result Rows:', len(results))
+    for result in results[:number_of_results]:
+        print(result)
+    
+    
 
 # ---------------------------------------------------------------------
 # Main Function
@@ -141,6 +152,7 @@ if __name__ == '__main__':
     elif command == 'insert':
         # Insert all states into table States. 
         ## All state names are in lower case and are alphabetially ordered when stored. 
+        
         state_dict = {}
         state_list = ["arkansas", "california", "michigan"]
         state_list = [state.lower() for state in state_list]
@@ -166,23 +178,39 @@ if __name__ == '__main__':
                 for row in reader:
                     site_dict = get_site_diction(row, state_id)
                     insert(db_connection, db_cursor, "Sites", site_dict)
-            print("Insert into table Sites completed for {}.".format(csv))  
+            print("Insert into table Sites completed for {}.".format(csvfile))  
 
         db_connection.commit()
-        print("Insert completed for both tables.")
 
-    elif command == 'search':
-        print('searching', search_term)
-
-
-
-    
-
-# Write code to make queries and save data in variables here.
-
-
-
-
-
-
-# We have not provided any tests, but you could write your own in this file or another file, if you want.
+    else:
+        print('Searching all locations...')
+        query = """SELECT "Location" FROM "Sites" """
+        all_locations = db_cursor.execute(query)
+        search(query)
+        
+        print('--------------------------------')
+        print('Searching all sites containting "beautiful"...')
+        query = """SELECT "Name" FROM "Sites" WHERE "Description" ilike '%beautiful%'"""
+        beautiful_sites = db_cursor.execute(query)
+        search(query)
+        
+        print('--------------------------------')
+        print('Searching total number of sites with type "National Lakeshore"...')
+        query = """SELECT COUNT("Name") FROM "Sites" WHERE "Type" = %s """
+        db_cursor.execute(query, ("National Lakeshore",))
+        natl_lakeshores = db_cursor.fetchone()
+        print(natl_lakeshores)
+        
+        print('--------------------------------')
+        print('Searching all sites in Michigan ...')
+        query = """SELECT "Sites"."Name" FROM "Sites" INNER JOIN "States" ON ("Sites"."State_ID" = "States"."ID") WHERE "States"."Name" = %s """
+        db_cursor.execute(query, ("michigan",))
+        michigan_names = db_cursor.fetchall()
+        print(len(michigan_names))
+        
+        print('--------------------------------')
+        print('Searching total number of sites in Arkansas ...')
+        query = 'SELECT count("Sites"."Name") FROM "Sites" INNER JOIN "States" ON ("Sites"."State_ID" = "States"."ID") WHERE "States"."Name" = %s'
+        db_cursor.execute(query, ("arkansas",))
+        total_number_arkansas = db_cursor.fetchone()
+        print(total_number_arkansas)
